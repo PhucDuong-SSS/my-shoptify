@@ -1,0 +1,55 @@
+services:
+  # NestJS App
+  shopify-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shopify_nestjs_app
+    # Đổi port bên ngoài thành 8080, bên trong container vẫn là 3000
+    ports:
+      - '8080:3000'
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/dist
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@shopify-db:5432/${DB_NAME}?schema=public
+    depends_on:
+      shopify-db:
+        condition: service_healthy
+
+  # PostgreSQL - Đổi port thành 5434 (5433 đang bị chiếm bởi container khác)
+  shopify-db:
+    image: postgres:15-alpine
+    container_name: shopify_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password123}
+      POSTGRES_DB: ${DB_NAME:-shopify_db}
+    ports:
+      - '5434:5432'
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${DB_USER:-admin} -d ${DB_NAME:-shopify_db}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - shopify_db_data:/var/lib/postgresql/data
+
+  # Redis - Đổi port thành 6381 (6380 đang bị chiếm bởi container khác)
+  shopify-redis:
+    image: redis:7-alpine
+    container_name: shopify_redis
+    ports:
+      - '6381:6379'
+
+volumes:
+  shopify_db_data:
