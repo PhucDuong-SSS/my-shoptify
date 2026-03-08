@@ -2,12 +2,16 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { shopifyApi, Shopify, ApiVersion } from '@shopify/shopify-api';
 import '@shopify/shopify-api/adapters/node';
 import { ConfigService } from '@nestjs/config';
-
+import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaSessionStorage } from '@shopify/shopify-app-session-storage-prisma';
 @Injectable()
 export class ShopifyService implements OnModuleInit {
   public shopify: Shopify;
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private prismaService: PrismaService,
+  ) {}
 
   onModuleInit() {
     const apiKey = this.configService.get<string>('SHOPIFY_API_KEY') || '';
@@ -28,6 +32,8 @@ export class ShopifyService implements OnModuleInit {
       hostName,
       apiVersion,
       isEmbeddedApp: true,
+      // Sử dụng Storage từ package mới
+      sessionStorage: new PrismaSessionStorage(this.prismaService),
     });
   }
 }
